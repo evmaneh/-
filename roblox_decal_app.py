@@ -17,11 +17,13 @@ uploaded_file = st.file_uploader("Upload Image", type=["png", "jpg", "jpeg", "tg
 # Slider for noise generator
 noise_level = st.slider("Noise Level", 0, 100, 1)
 
-# Function to apply noise effect
 def apply_noise_effect(image_data, noise_level):
     data = image_data.getdata()
     modified_data = []
     for pixel in data:
+        # Check if the pixel tuple has three values (R, G, B)
+        if len(pixel) != 3:
+            continue
         r, g, b = pixel
         if random.random() < noise_level / 100:
             r = random.randint(0, 255)
@@ -30,6 +32,7 @@ def apply_noise_effect(image_data, noise_level):
         modified_data.append((r, g, b))
     image_data.putdata(modified_data)
     return image_data
+
 
 # Function to upload image to Roblox
 def upload_image_to_roblox(api_key, user_id, image):
