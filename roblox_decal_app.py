@@ -1,26 +1,36 @@
 import streamlit as st
 import requests
 
-def get_decals_count(user_id):
-    url = f"https://www.roblox.com/Thumbs/Asset.ashx?width=110&height=110&assetId={user_id}"
-    try:
-        response = requests.get(url)
-        if response.status_code == 200:
-            image_urls = response.text.split(",")
-            return len(image_urls)
-        else:
-            st.error("Failed to fetch user decals. Please check the user ID and try again.")
-            return None
-    except Exception as e:
-        st.error(f"An error occurred: {e}")
-        return None
-
-st.title("Roblox Decal Counter")
-user_id = st.text_input("Enter Roblox UserID:")
-if st.button("Count Decals"):
-    if user_id.strip() == "":
-        st.warning("Please enter a valid Roblox UserID.")
+def fetch_inventory(user_id):
+    # Make a request to Roblox API to get the user's inventory
+    url = f"https://inventory.roblox.com/v2/users/{user_id}/inventory"
+    response = requests.get(url)
+    if response.status_code == 200:
+        data = response.json()
+        return data
     else:
-        decal_count = get_decals_count(user_id)
-        if decal_count is not None:
-            st.success(f"The user has {decal_count} decals.")
+        st.error(f"Failed to fetch inventory. Error code: {response.status_code}")
+
+def count_decals(inventory):
+    # Count how many decals are in the inventory
+    decal_count = 0
+    for item in inventory["data"]:
+        if item["assetType"]["name"] == "Decal":
+            decal_count += 1
+    return decal_count
+
+def main():
+    st.title("Roblox Decal Counter")
+
+    user_id = st.text_input("Enter your Roblox UserID:")
+    if st.button("Count Decals"):
+        if user_id:
+            inventory = fetch_inventory(user_id)
+            if inventory:
+                decal_count = count_decals(inventory)
+                st.success(f"Number of decals in inventory: {decal_count}")
+        else:
+            st.warning("Please enter a valid Roblox UserID.")
+
+if __name__ == "__main__":
+    main()
