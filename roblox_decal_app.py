@@ -1,36 +1,45 @@
 import streamlit as st
 import requests
 
-def fetch_inventory(user_id):
-    # Make a request to Roblox API to get the user's inventory
-    url = f"https://inventory.roblox.com/v2/users/{user_id}/inventory"
-    response = requests.get(url)
+# Function to fetch Roblox account inventory decals count
+def get_decals_count(user_id, api_key):
+    # Endpoint to get user inventory
+    url = f"https://api.roblox.com/users/{user_id}/inventory"
+    
+    # Sending GET request with API key
+    headers = {'Authorization': f'Bearer {api_key}'}
+    response = requests.get(url, headers=headers)
+    
+    # Check if request was successful
     if response.status_code == 200:
-        data = response.json()
-        return data
+        inventory = response.json()
+        # Counting decals in inventory
+        decal_count = sum(1 for item in inventory if item['assetType'] == 'Decal')
+        return decal_count
     else:
-        st.error(f"Failed to fetch inventory. Error code: {response.status_code}")
+        return None
 
-def count_decals(inventory):
-    # Count how many decals are in the inventory
-    decal_count = 0
-    for item in inventory["data"]:
-        if item["assetType"]["name"] == "Decal":
-            decal_count += 1
-    return decal_count
-
+# Streamlit app UI
 def main():
-    st.title("Roblox Decal Counter")
-
-    user_id = st.text_input("Enter your Roblox UserID:")
-    if st.button("Count Decals"):
-        if user_id:
-            inventory = fetch_inventory(user_id)
-            if inventory:
-                decal_count = count_decals(inventory)
-                st.success(f"Number of decals in inventory: {decal_count}")
+    st.title("Roblox Decal Inventory Counter")
+    st.write("Enter your Roblox UserID and API key below:")
+    
+    # User input for UserID and API key
+    user_id = st.text_input("Enter Roblox UserID:")
+    api_key = st.text_input("Enter Roblox API Key:", type="password")
+    
+    # Check if user submitted input
+    if st.button("Fetch Decals Count"):
+        # Check if both UserID and API key are provided
+        if user_id and api_key:
+            st.write("Fetching decal count...")
+            decal_count = get_decals_count(user_id, api_key)
+            if decal_count is not None:
+                st.write(f"Total Decals in Inventory: {decal_count}")
+            else:
+                st.write("Failed to fetch decal count. Please check your UserID and API key.")
         else:
-            st.warning("Please enter a valid Roblox UserID.")
+            st.write("Please enter both UserID and API key.")
 
 if __name__ == "__main__":
     main()
