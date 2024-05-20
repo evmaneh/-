@@ -1,53 +1,42 @@
 import streamlit as st
-from PIL import Image
+import numpy as np
+import cv2
 
-
-def color_to_alpha(image, target_color, tolerance=0):
+def color_to_alpha(img, color):
     """
-    Convert a specific color to alpha channel in the image with a tolerance level.
-
-    Parameters:
-    image (PIL.Image): The input image.
-    target_color (tuple): The RGB color to convert to alpha.
-    tolerance (int): Tolerance level for color matching (0 to 255).
-
+    Converts a specific color to alpha (transparent) in an image.
+    
+    Args:
+    - img (numpy.ndarray): Input image.
+    - color (tuple): RGB color tuple to be converted to alpha.
+    
     Returns:
-    PIL.Image: The resulting image with the specified color converted to alpha.
+    - numpy.ndarray: Image with the specified color converted to alpha.
     """
-    img = image.convert("RGBA")
-    data = img.getdata()
-    new_data = []
-    for item in data:
-        # Change pixels that are close to the specified color to transparent
-        if all(abs(item[i] - target_color[i]) <= tolerance for i in range(3)):
-            new_data.append((item[0], item[1], item[2], 0))
-        else:
-            new_data.append(item)
-    img.putdata(new_data)
-    return img
-
+    alpha = np.ones((img.shape[0], img.shape[1]), dtype=np.float32)
+    mask = np.all(img == color, axis=-1)
+    alpha[mask] = 0
+    return alpha
 
 def main():
-    st.title("Color to Alpha (Photopea Style)")
+    st.title("Color to Alpha Effect")
 
-    uploaded_file = st.file_uploader("Choose an image", type=["jpg", "png", "jpeg"])
+    uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "png"])
 
     if uploaded_file is not None:
-        image = Image.open(uploaded_file)
-        st.image(image, caption="Original Image", use_column_width=True)
+        file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
+        original_image = cv2.imdecode(file_bytes, 1)
 
-        # Get the color to convert to alpha
-        color_str = st.text_input("Enter the color to convert to alpha (e.g., '255,255,255' for white):")
-        color = tuple(map(int, color_str.split(','))) if color_str else None
+        st.subheader("Original Image")
+        st.image(original_image, channels="BGR")
 
-        if color:
-            tolerance = st.slider("Set Tolerance Level", min_value=0, max_value=255, value=0)
-            st.write("Converting specified color to alpha...")
-            alpha_image = color_to_alpha(image, color, tolerance)
-            st.image(alpha_image, caption="Image with Color Converted to Alpha", use_column_width=True)
-        else:
-            st.warning("Please enter a valid color.")
+        color_picker = st.color_picker("Select the color to make transparent", "#ffffff")
+        color = tuple(int(color_picker[i:i+2], 16) for i in (1, 3, 5))
 
+        alpha_image = color_to_alpha(cv2.cvtColor(original_image, cv2.COLOR_BGR2RGB), color)
+
+        st.subheader("Alpha Image")
+        st.image(alpha_image, channels="RGBA")
 
 if __name__ == "__main__":
     main()
