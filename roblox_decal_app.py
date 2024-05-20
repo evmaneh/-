@@ -1,51 +1,77 @@
 import streamlit as st
 import requests
+from PIL import Image
+import io
 
-# Function to fetch Roblox account inventory decals count
-def get_decals_count(user_id, api_key):
-    # Endpoint to get user inventory
-    url = f"https://api.roblox.com/users/{user_id}/inventory"
-    
-    # Sending GET request with API key
-    headers = {'Authorization': f'Bearer {api_key}'}
-    
-    try:
-        response = requests.get(url, headers=headers)
-        # Check if request was successful
-        if response.status_code == 200:
-            inventory = response.json()
-            # Counting decals in inventory
-            decal_count = sum(1 for item in inventory if item['assetType'] == 'Decal')
-            return decal_count
-        else:
-            st.error(f"Failed to fetch decal count. Status Code: {response.status_code}")
-            return None
-    except requests.exceptions.ConnectionError as e:
-        st.error("Connection error occurred. Please check your network connection and try again.")
-        st.error(f"Error Details: {e}")
-        return None
+# Streamlit layout
+st.title('Roblox Mass Uploader')
 
-# Streamlit app UI
-def main():
-    st.title("Roblox Decal Inventory Counter")
-    st.write("Enter your Roblox UserID and API key below:")
-    
-    # User input for UserID and API key
-    user_id = st.text_input("Enter Roblox UserID:")
-    api_key = st.text_input("Enter Roblox API Key:", type="password")
-    
-    # Check if user submitted input
-    if st.button("Fetch Decals Count"):
-        # Check if both UserID and API key are provided
-        if user_id and api_key:
-            st.write("Fetching decal count...")
-            decal_count = get_decals_count(user_id, api_key)
-            if decal_count is not None:
-                st.write(f"Total Decals in Inventory: {decal_count}")
-            else:
-                st.write("Failed to fetch decal count. Please check the error messages above.")
-        else:
-            st.error("Please enter both UserID and API key.")
+# User input for Roblox API key and userid
+roblox_api_key = st.text_input('Enter your Roblox API key:')
+userid = st.text_input('Enter your user id:')
 
-if __name__ == "__main__":
-    main()
+# Image upload
+uploaded_file = st.file_uploader("Upload Image", type=["png", "jpg", "jpeg", "tga", "bmp"])
+
+# Slider for noise generator
+noise_level = st.slider("Noise Level", 0, 100, 1)
+
+# Function to apply noise effect
+def apply_noise_effect(image_data, noise_level):
+    data = image_data.getdata()
+    modified_data = []
+    for pixel in data:
+        r, g, b = pixel
+        if random.random() < noise_level / 100:
+            r = random.randint(0, 255)
+            g = random.randint(0, 255)
+            b = random.randint(0, 255)
+        modified_data.append((r, g, b))
+    image_data.putdata(modified_data)
+    return image_data
+
+# Function to upload image to Roblox
+def upload_image_to_roblox(api_key, user_id, image):
+    # Prepare data
+    data = {
+        'assetType': 'Decal',  # Default to Decal
+        'displayName': 'Kegen Yassupload Sest!',
+        'description': 'Check it out!',
+        'creationContext': {
+            'creator': {
+                'userId': user_id
+            }
+        }
+    }
+    headers = {'x-api-key': api_key}
+
+    # Convert image to bytes
+    img_byte_arr = io.BytesIO()
+    image.save(img_byte_arr, format='PNG')
+    img_byte_arr.seek(0)
+
+    # Prepare multipart form data
+    files = {'fileContent': img_byte_arr}
+    response = requests.post('https://apis.roblox.com/assets/v1/assets', headers=headers, data=data, files=files)
+    
+    return response
+
+# Button to start uploading
+if st.button('Start'):
+    if roblox_api_key and userid and uploaded_file:
+        # Load the image
+        image = Image.open(uploaded_file)
+        
+        # Apply noise effect
+        noisy_image = apply_noise_effect(image.copy(), noise_level)
+
+        # Display original and noisy images
+        st.image([image, noisy_image], caption=['Original Image', 'Noisy Image'], width=200)
+
+        # Upload noisy image to Roblox
+        response = upload_image_to_roblox(roblox_api_key, userid, noisy_image)
+        
+        # Display response
+        st.write("Response from Roblox API:", response.text)
+    else:
+        st.error("Please fill in all the required fields.")
