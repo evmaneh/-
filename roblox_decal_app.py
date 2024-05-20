@@ -8,15 +8,21 @@ def get_decals_count(user_id, api_key):
     
     # Sending GET request with API key
     headers = {'Authorization': f'Bearer {api_key}'}
-    response = requests.get(url, headers=headers)
     
-    # Check if request was successful
-    if response.status_code == 200:
-        inventory = response.json()
-        # Counting decals in inventory
-        decal_count = sum(1 for item in inventory if item['assetType'] == 'Decal')
-        return decal_count
-    else:
+    try:
+        response = requests.get(url, headers=headers)
+        # Check if request was successful
+        if response.status_code == 200:
+            inventory = response.json()
+            # Counting decals in inventory
+            decal_count = sum(1 for item in inventory if item['assetType'] == 'Decal')
+            return decal_count
+        else:
+            st.error(f"Failed to fetch decal count. Status Code: {response.status_code}")
+            return None
+    except requests.exceptions.ConnectionError as e:
+        st.error("Connection error occurred. Please check your network connection and try again.")
+        st.error(f"Error Details: {e}")
         return None
 
 # Streamlit app UI
@@ -37,9 +43,9 @@ def main():
             if decal_count is not None:
                 st.write(f"Total Decals in Inventory: {decal_count}")
             else:
-                st.write("Failed to fetch decal count. Please check your UserID and API key.")
+                st.write("Failed to fetch decal count. Please check the error messages above.")
         else:
-            st.write("Please enter both UserID and API key.")
+            st.error("Please enter both UserID and API key.")
 
 if __name__ == "__main__":
     main()
